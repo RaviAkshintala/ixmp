@@ -1,28 +1,23 @@
 name: Test
 
-on:
-  pull_request:
-    branches: [ main ]
-  schedule:
-  - cron: "0 5 * * *"
+on: [push,pull_request]
 
-# Cancel previous runs that have not completed
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
 env:
+  GAMS_VERSION: 43.4.1
   depth: 100
 
 jobs:
   pytest:
-    strategy:
-      matrix:
-        os:
-        - macos-13
-        - macos-latest
-        - ubuntu-latest
-        - windows-latest
+    if: >
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-22.04
+    name: Ubuntu-22.04-py${{ matrix.python-version }}
+
         python-version:
         - "3.9"  # Earliest version supported by ixmp
         - "3.10"
@@ -98,6 +93,13 @@ jobs:
       # Use the environment variable set by the setup-python action, above.
       run: echo "RETICULATE_PYTHON=$pythonLocation" >> $GITHUB_ENV
       shell: bash
+    - name: Install system dependencies for R packages
+         
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
+        sudo apt-get install -y python3-pip python3-dev
+        pip3 install jupyter
 
     - name: Install Python package and dependencies
       # [docs] contains [tests], which contains [report,tutorial]
